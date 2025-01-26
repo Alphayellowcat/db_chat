@@ -6,6 +6,8 @@ from langchain_openai import ChatOpenAI  # OpenAI的聊天模型接口
 from langchain_community.utilities import SQLDatabase  # SQL数据库工具
 from config import MYSQL_CONFIG, OPENAI_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_MODEL
 import os
+from typing import Iterator
+import sys
 
 # 设置API密钥
 os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
@@ -86,50 +88,67 @@ class DBChatBot:
             """)
         ])
         
-    def chat(self, user_question: str) -> str:
-        """处理用户问题并返回答案
+    def process_streaming_response(self, response: Iterator) -> str:
+        """处理流式响应
         
         Args:
-            user_question (str): 用户的自然语言问题
+            response: LLM的流式响应迭代器
             
         Returns:
-            str: 包含SQL查询、结果和解释的格式化响应
+            str: 完整的响应内容
         """
+        full_response = []
+        for chunk in response:
+            if chunk.content:
+                print(chunk.content, end='', flush=True)
+                full_response.append(chunk.content)
+        print()  # 换行
+        return ''.join(full_response)
+    
+    def chat(self, user_question: str) -> str:
+        """处理用户问题并返回答案"""
         try:
-            # 获取数据库schema信息
             schema = get_schema(self.db)
             
-            # 对于特殊问题的处理（如数据库概览）
+            print("\n生成SQL查询...", flush=True)
             if "解释" in user_question and "数据库" in user_question:
                 sql_query = "SHOW TABLES;"
             else:
-                # 使用LLM生成SQL查询
-                sql_response = self.llm.invoke(
-                    self.sql_prompt.format(
-                        schema=schema,
-                        question=user_question
+                # 使用LLM生成SQL查询（流式输出）
+                sql_response = self.process_streaming_response(
+                    self.llm.stream(
+                        self.sql_prompt.format(
+                            schema=schema,
+                            question=user_question
+                        )
                     )
                 )
-                sql_query = sql_response.content.strip()
+                sql_query = sql_response.strip()
+            
+            print(f"\nSQL查询: {sql_query}")
             
             # 执行SQL查询
+            print("\n执行查询...", flush=True)
             result = run_query(self.db, sql_query)
+            print(f"查询结果: {result}")
             
-            # 使用LLM解释查询结果
-            final_response = self.llm.invoke(
-                self.response_prompt.format(
-                    schema=schema,
-                    question=user_question,
-                    query=sql_query,
-                    result=result
+            # 使用LLM解释查询结果（流式输出）
+            print("\n生成解释...", flush=True)
+            final_response = self.process_streaming_response(
+                self.llm.stream(
+                    self.response_prompt.format(
+                        schema=schema,
+                        question=user_question,
+                        query=sql_query,
+                        result=result
+                    )
                 )
             )
             
-            # 返回格式化的响应
             return f"""
-查询: {sql_query}
-结果: {result}
-解释: {final_response.content}
+SQL查询: {sql_query}
+查询结果: {result}
+解释: {final_response}
 """
             
         except Exception as e:
