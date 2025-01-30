@@ -15,6 +15,11 @@ MYSQL_CONFIG = {
 }
 
 # API配置
-OPENAI_API_KEY = os.getenv('DEEPSEEK_API_KEY')
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+
+# Deepseek API配置
+DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY')
 DEEPSEEK_BASE_URL = os.getenv('DEEPSEEK_BASE_URL')
 DEEPSEEK_MODEL = os.getenv('DEEPSEEK_MODEL') 
