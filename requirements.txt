@@ -25,3 +25,13 @@ plotly>=5.18.0
 # 开发工具
 pytest>=7.0.0
 black>=23.0.0
+
+# 数据可视化
+matplotlib>=3.7.1
+seaborn>=0.12.2
+plotly>=5.13.0
+
+# PDF生成
+markdown>=3.4.3
+pdfkit>=1.0.0
+wkhtmltopdf>=0.2
